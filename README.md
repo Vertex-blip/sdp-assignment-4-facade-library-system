@@ -168,12 +168,10 @@ All 18 tests passed.
 
 GitHub Actions compiles with warnings treated as errors, runs the tests, and runs the demonstration on JDK 17 for pushes and pull requests.
 
-## Defense
+## Why this is Facade
 
 Facade is a **structural design pattern** that provides a simplified interface to a complex subsystem. Here, the complexity is coordinating four separate responsibilities in the right order. The facade reduces what a normal client needs to know while preserving direct access to the subsystem for advanced clients.
 
 The facade is not a replacement for the subsystem: it delegates the actual rules and state changes. It also does more than rename a single method: one borrowing call coordinates membership, debt, loan eligibility, stock reservation, and record creation.
 
 Unlike Bridge in Assignment 3, this project does not separate two independently growing class hierarchies. Its purpose is to give the client a simple entry point to an existing set of cooperating classes. An Adapter would make an incompatible interface usable; this facade simplifies several already usable interfaces.
-
-See [the Kazakh defense guide](docs/DEFENSE.md) for a short explanation, operation walkthrough, and practice questions.

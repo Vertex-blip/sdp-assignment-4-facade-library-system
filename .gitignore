@@ -4,3 +4,5 @@ out/
 *.iml
 .vscode/
 .DS_Store
+output/
+tmp/
