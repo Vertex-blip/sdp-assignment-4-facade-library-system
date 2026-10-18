@@ -80,9 +80,9 @@ classDiagram
     }
 ```
 
-The client never constructs or calls a subsystem. The facade's public constructor creates the default subsystem configuration. A package-private constructor supports deterministic tests without exposing subsystem configuration in the public client API.
+The client never constructs or calls a subsystem. The facade's public constructor creates the default subsystem configuration without exposing subsystem configuration in the public client API.
 
-Subsystems have **no reference to `LibraryFacade`**. Their classes, constructors, and operations remain public, so an advanced client can use them directly. The `directSubsystemUse` regression test demonstrates this without creating a facade. The normal demonstration in `Main` uses only the facade.
+Subsystems have **no reference to `LibraryFacade`**. Their classes, constructors, and operations remain public, so an advanced client can use them directly. The demonstration in `Main` uses only the facade.
 
 ## Coordination and failure handling
 
@@ -146,27 +146,8 @@ This is a single-threaded, in-memory educational application. Each new `LibraryF
 4. **Encapsulation and a small interface.** Subsystem fields are private. The facade exposes four business operations and returns immutable `LoanReceipt` data without returning subsystem instances or mutable collections.
 5. **Do not repeat business rules.** The loan period and borrowing limit are named constants in `LoanRegistry`. The daily fine is defined once in `FineService`. The facade delegates these rules instead of duplicating them.
 6. **Explicit error handling.** Business failures produce informative `LibraryException` messages with their original causes. Borrowing releases reservations after a failure; repeated returns and releases do not repeat side effects.
-7. **Testable dependencies.** Dependencies are explicit constructor parameters internally. Tests provide fixed clocks and known subsystem state, allowing exact overdue-date and balance checks without waiting for real time to pass.
 
 All Java source files are written without comments.
-
-## Verification
-
-```sh
-javac -encoding UTF-8 -Xlint:all -Werror -d out src/library/*.java test/library/*.java
-java -cp out library.LibraryFacadeTest
-java -cp out library.Main
-```
-
-The test runner requires no test framework and throws an `AssertionError` on failure. It does not depend on Java's optional `-ea` flag. It covers **18 scenarios**, including unavailable copies, inactive members, unknown IDs, duplicate borrowing, borrowing limits, successful returns, repeated returns, overdue fines, partial and full payments, invalid payments, rollback after a coordination failure, invalid return dates, and direct use of the subsystems.
-
-The overdue tests use fixed clocks: a book borrowed on October 1, 2026 is due on October 15. Returning it on October 18 produces exactly `300.00 KZT` of debt. The final test output is:
-
-```text
-All 18 tests passed.
-```
-
-GitHub Actions compiles with warnings treated as errors, runs the tests, and runs the demonstration on JDK 17 for pushes and pull requests.
 
 ## Why this is Facade
 
