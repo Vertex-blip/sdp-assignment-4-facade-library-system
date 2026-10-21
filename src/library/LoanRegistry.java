@@ -2,71 +2,64 @@ package library;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 public final class LoanRegistry {
-    private static final int LOAN_PERIOD_DAYS = 14;
-    private static final int MAX_ACTIVE_LOANS = 3;
-    private final Map<String, LoanReceipt> loans = new LinkedHashMap<>();
+    public record Loan(String id, String memberId, String bookId, LocalDate borrowedOn,
+            LocalDate dueOn, LocalDate returnedOn, BigDecimal fine) {
+        public boolean isReturned() {
+            return returnedOn != null;
+        }
+    }
+
+    private final Map<String, Loan> loans = new HashMap<>();
 
     public void ensureCanBorrow(String memberId, String bookId) {
         if (memberId == null || memberId.isBlank() || bookId == null || bookId.isBlank()) {
-            throw new IllegalArgumentException("Member ID and book ID must not be blank");
+            throw new IllegalArgumentException("Member and book IDs are required");
         }
-        if (activeLoanCount(memberId) >= MAX_ACTIVE_LOANS) {
-            throw new IllegalStateException("Member has reached the limit of " + MAX_ACTIVE_LOANS + " active loans");
+        long active = loans.values().stream()
+                .filter(loan -> loan.memberId().equals(memberId) && !loan.isReturned()).count();
+        if (active >= 3) {
+            throw new IllegalStateException("Three active loans are already open");
         }
-        boolean alreadyBorrowed = loans.values().stream()
-                .anyMatch(loan -> !loan.isReturned() && loan.memberId().equals(memberId)
-                        && loan.bookId().equals(bookId));
-        if (alreadyBorrowed) {
+        boolean duplicate = loans.values().stream().anyMatch(loan ->
+                loan.memberId().equals(memberId) && loan.bookId().equals(bookId) && !loan.isReturned());
+        if (duplicate) {
             throw new IllegalStateException("Member already borrowed this book");
         }
     }
 
-    public LoanReceipt open(String loanId, String memberId, Book book, LocalDate borrowedOn) {
-        Objects.requireNonNull(loanId, "Loan ID is required");
-        Objects.requireNonNull(book, "Book is required");
-        Objects.requireNonNull(borrowedOn, "Borrowing date is required");
+    public Loan open(String loanId, String memberId, String bookId, LocalDate date) {
+        ensureCanBorrow(memberId, bookId);
         if (loans.containsKey(loanId)) {
-            throw new IllegalArgumentException("Loan ID must be unique");
+            throw new IllegalStateException("Loan ID already exists");
         }
-        ensureCanBorrow(memberId, book.id());
-        LoanReceipt receipt = new LoanReceipt(loanId, memberId, book.id(), book.title(),
-                borrowedOn, borrowedOn.plusDays(LOAN_PERIOD_DAYS), null, new BigDecimal("0.00"));
-        loans.put(loanId, receipt);
-        return receipt;
+        Loan loan = new Loan(loanId, memberId, bookId, date, date.plusDays(14), null, BigDecimal.ZERO);
+        loans.put(loanId, loan);
+        return loan;
     }
 
-    public LoanReceipt find(String loanId) {
-        LoanReceipt receipt = loans.get(loanId);
-        if (receipt == null) {
+    public Loan find(String loanId) {
+        Loan loan = loans.get(loanId);
+        if (loan == null) {
             throw new IllegalArgumentException("Unknown loan: " + loanId);
         }
-        return receipt;
+        return loan;
     }
 
-    public LoanReceipt close(String loanId, LocalDate returnedOn, BigDecimal fineKzt) {
-        LoanReceipt receipt = find(loanId);
-        if (receipt.isReturned()) {
-            return receipt;
+    public Loan close(String loanId, LocalDate date, BigDecimal fine) {
+        Loan loan = find(loanId);
+        if (loan.isReturned()) {
+            return loan;
         }
-        Objects.requireNonNull(returnedOn, "Return date is required");
-        Objects.requireNonNull(fineKzt, "Fine is required");
-        if (returnedOn.isBefore(receipt.borrowedOn()) || fineKzt.signum() < 0) {
-            throw new IllegalArgumentException("Return date and fine must be valid");
+        if (date.isBefore(loan.borrowedOn())) {
+            throw new IllegalArgumentException("Return date precedes borrowing date");
         }
-        LoanReceipt returned = new LoanReceipt(receipt.loanId(), receipt.memberId(), receipt.bookId(),
-                receipt.bookTitle(), receipt.borrowedOn(), receipt.dueOn(), returnedOn, fineKzt);
+        Loan returned = new Loan(loan.id(), loan.memberId(), loan.bookId(),
+                loan.borrowedOn(), loan.dueOn(), date, fine);
         loans.put(loanId, returned);
         return returned;
-    }
-
-    public long activeLoanCount(String memberId) {
-        return loans.values().stream()
-                .filter(loan -> loan.memberId().equals(memberId) && !loan.isReturned())
-                .count();
     }
 }
